@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/beevik/etree"
 )
@@ -18,7 +19,15 @@ var uriRegexp = regexp.MustCompile("^#[a-zA-Z_][\\w.-]*$")
 type ValidationContext struct {
 	CertificateStore X509CertificateStore
 	IdAttribute      string
-	Clock            *Clock
+	// Method for determining time. If not provided time.Now is used.
+	Now func() time.Time
+}
+
+func (v *ValidationContext) now() time.Time {
+	if v.Now == nil {
+		return time.Now()
+	}
+	return v.Now()
 }
 
 func NewDefaultValidationContext(certificateStore X509CertificateStore) *ValidationContext {
@@ -312,7 +321,7 @@ func contains(roots []*x509.Certificate, cert *x509.Certificate) bool {
 }
 
 func (ctx *ValidationContext) verifyCertificate(el *etree.Element) (*x509.Certificate, error) {
-	now := ctx.Clock.Now()
+	now := ctx.now()
 	el = el.Copy()
 
 	idAttr := el.SelectAttr(DefaultIdAttr)
